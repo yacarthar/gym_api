@@ -3,68 +3,70 @@ Product Routers
 """
 
 from flask import request, jsonify
-from flask_restx import Resource, Namespace, fields, marshal
+from flask_restx import Resource, marshal
 from bson.objectid import ObjectId
-from model import user
+from pymongo import ReturnDocument
 
-ns = Namespace("User", description="User operations")
-user_schema = ns.model(
-    "user",
-    {
-        "sub": fields.String(required=True),
-        "address": fields.Nested(
-            ns.model(
-                "address",
-                {
-                    "country": fields.String(),
-                    "city": fields.String(),
-                    "street": fields.String(),
-                    # "lat-long": fields.String(),
-                },
-            ),
-            skip_none=True,
-        ),
-        "dob": fields.DateTime(),
-        "card": fields.Nested(
-            ns.model(
-                "card",
-                {
-                    "brand": fields.String(enum=["VISA", "MasterCard"]),
-                    "pan": fields.String(pattern=r"[\d]{16}", max_length=16),  # primary account number
-                    "expiration": fields.Nested(
-                        ns.model(
-                            "expire",
-                            {
-                                "year": fields.Integer(min=1900, max=2100),
-                                "month": fields.Integer(min=1, max=12),
-                            },
-                        ),
-                        skip_none=True,
-                    ),
-                    "cvv": fields.String(pattern=r"[\d]{3}", max_length=3),
-                },
-            ),
-            skip_none=True,
-        ),
-    },
-)
+from model import user
+from api.schema.user import ns, user_schema
 
 
 @ns.route("/")
 class Users(Resource):
     @ns.expect(user_schema, validate=True)
     def post(self):
-        """
-        create users
-        """
-        res = marshal(ns.payload, user_schema)
-        # res = user.insert_one(ns.payload)
-        # return str(res.inserted_id)
-        return jsonify(res)
+        """create users"""
+        data = marshal(ns.payload, user_schema, skip_none=True)
+        try:
+            _user = user.find_one({"sub": data["sub"]})
+            if _user:
+                return {"message": "user exists"}, 409
+            else:
+                res = user.insert_one(data)
+                return {"created_user": str(res.inserted_id)}, 200
+        except Exception as e:
+            return {"error": str(e)}, 400
 
 
-@ns.route("/<user_id>")
+@ns.route("/id/<user_id>")
 class User(Resource):
     def get(self, user_id):
-        """get one user"""
-        return user.find_one({"name": "jones"}, projection={"_id": False})
+        """get user by id"""
+        try:
+            _user = user.find_one({"_id": ObjectId(user_id)}, projection={"_id": False})
+            if _user:
+                return marshal(_user, user_schema, skip_none=True), 200
+            else:
+                return {"error": "user not found"}, 404
+        except Exception as e:
+            return {"error": str(e)}, 400
+
+
+@ns.route("/sub/<user_sub>")
+class User(Resource):
+    def get(self, user_sub):
+        """get user by sub"""
+        try:
+            _user = user.find_one({"sub": user_sub}, projection={"_id": False})
+            if _user:
+                return marshal(_user, user_schema, skip_none=True), 200
+            else:
+                return {"error": "user not found"}, 404
+        except Exception as e:
+            return {"error": str(e)}, 400
+
+    @ns.expect(user_schema, validate=True)
+    def put(self, user_sub):
+        """create users"""
+        data = marshal(ns.payload, user_schema, skip_none=True)
+        try:
+            res = user.find_one_and_update(
+                {"sub": user_sub},
+                {"$set": data},
+                projection={"_id": False},
+                return_document=ReturnDocument.AFTER,
+            )
+            print(res)
+            return res, 200
+        except Exception as e:
+            return {"error": str(e)}, 400
