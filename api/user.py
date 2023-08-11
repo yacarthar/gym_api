@@ -10,19 +10,23 @@ from pymongo import ReturnDocument
 
 from model import user
 from api.schema.user import ns, input_post_schema, input_put_schema, output_get_schema
+from api.auth import requires_auth
 from utils import flatten
+
 
 @ns.route("/")
 class Users(Resource):
+    @requires_auth
     @ns.expect(input_post_schema, validate=True)
-    def post(self):
+    def post(self, user_sub):
         """create users"""
-        data = marshal(ns.payload, input_post_schema, skip_none=True)
         try:
-            _user = user.find_one({"sub": data["sub"]})
+            _user = user.find_one({"sub": user_sub})
             if _user:
                 return {"message": "user exists"}, 409
             else:
+                data = marshal(ns.payload, input_post_schema, skip_none=True)
+                data["sub"] = user_sub
                 res = user.insert_one(data)
                 return {"created_user": str(res.inserted_id)}, 200
         except Exception as e:
@@ -43,10 +47,12 @@ class User(Resource):
             return {"error": str(e)}, 400
 
 
-@ns.route("/sub/<user_sub>")
+@ns.route("/sub/")
 class User(Resource):
+    @requires_auth
     def get(self, user_sub):
         """get user by sub"""
+        print(user_sub)
         try:
             _user = user.find_one({"sub": user_sub}, projection={"_id": False})
             if _user:
@@ -56,6 +62,7 @@ class User(Resource):
         except Exception as e:
             return {"error": str(e)}, 400
 
+    @requires_auth
     @ns.expect(input_put_schema, validate=True)
     def put(self, user_sub):
         """create users"""

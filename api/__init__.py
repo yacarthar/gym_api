@@ -7,6 +7,7 @@ from flask_restx import Api
 
 from .product import ns as product_ns
 from .user import ns as user_ns
+from .errors import Error, error_handler
 
 blue_print = Blueprint("api_blueprint", __name__)
 api = Api(
@@ -19,3 +20,4 @@ api = Api(
 
 api.add_namespace(product_ns, path="/p")
 api.add_namespace(user_ns, path="/u")
+blue_print.register_error_handler(Error, error_handler)

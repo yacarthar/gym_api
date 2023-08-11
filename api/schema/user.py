@@ -53,6 +53,6 @@ def create_user_schema(require_sub):
         },
     )
 
-input_post_schema = create_user_schema(require_sub=True)
+input_post_schema = create_user_schema(require_sub=False)
 output_get_schema = create_user_schema(require_sub=True)
 input_put_schema = create_user_schema(require_sub=False)
