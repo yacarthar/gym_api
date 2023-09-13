@@ -12,3 +12,4 @@ db = client["gym"]
 
 product = db["product"]
 user = db["user"]
+cart = db["cart"]

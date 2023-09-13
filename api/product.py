@@ -28,7 +28,7 @@ class Product(Resource):
                 {"_id": ObjectId(identifier)},
                 projection={"_id": False}
             )
-        elif query_by == "short_id":
+        elif query_by in ["short_id", "shortId"]:
             return product.find_one(
                 {"id": identifier},
                 projection={"_id": False}

@@ -9,6 +9,7 @@ class ObjectID(fields.String):
 
 ns = Namespace("User", description="User operations")
 
+
 def create_user_schema(require_sub):
     return ns.model(
         "user",
@@ -20,12 +21,16 @@ def create_user_schema(require_sub):
                     {
                         "country": fields.String(),
                         "city": fields.String(),
+                        "district": fields.String(),
+                        "ward": fields.String(),
                         "street": fields.String(),
                     },
                 ),
                 skip_none=True,
             ),
-            "dob": fields.DateTime(),
+            "gender": fields.String(enum=["Male", "Female"]),
+            "phone_number": fields.String(pattern=r"[\d]{10}", max_length=10),
+            "dob": fields.Date(),
             "card": fields.Nested(
                 ns.model(
                     "card",
@@ -34,16 +39,7 @@ def create_user_schema(require_sub):
                         "pan": fields.String(
                             pattern=r"[\d]{16}", max_length=16
                         ),  # primary account number
-                        "expiration": fields.Nested(
-                            ns.model(
-                                "expire",
-                                {
-                                    "year": fields.Integer(min=1900, max=2100),
-                                    "month": fields.Integer(min=1, max=12),
-                                },
-                            ),
-                            skip_none=True,
-                        ),
+                        "expiration": fields.Date(),  # min, max, exclusiveMin and exclusiveMax
                         "cvv": fields.String(pattern=r"[\d]{3}", max_length=3),
                     },
                 ),
@@ -53,6 +49,23 @@ def create_user_schema(require_sub):
         },
     )
 
-input_post_schema = create_user_schema(require_sub=False)
+
+input_post_schema = create_user_schema(require_sub=True)
 output_get_schema = create_user_schema(require_sub=True)
 input_put_schema = create_user_schema(require_sub=False)
+
+input_put_cart_schema = ns.model(
+    "cart",
+    {
+        "items": fields.List(fields.Nested(
+            ns.model(
+                "items",
+                {
+                    "id": fields.String(required=True),
+                    "quantity": fields.Integer(required=True),
+                    "updatedAt": fields.Integer(required=True),
+                }
+            )
+        ))
+    }
+)

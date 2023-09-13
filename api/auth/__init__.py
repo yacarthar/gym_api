@@ -3,7 +3,7 @@ import json
 import os
 from functools import wraps
 
-from flask import request, _request_ctx_stack
+from flask import request
 from jose import jwt
 from six.moves.urllib.request import urlopen
 
@@ -47,7 +47,7 @@ def get_token_auth_header() -> str:
     return token
 
 
-def requires_auth(func):
+def requires_token(func):
     """Determines if the access token is valid"""
 
     @wraps(func)
@@ -117,7 +117,6 @@ def requires_auth(func):
                     },
                     401,
                 ) from exc
-            print(type(payload))
             print(payload)
             user_sub = payload.get("sub")
             return func(user_sub=user_sub, *args, **kwargs)
@@ -125,5 +124,36 @@ def requires_auth(func):
             {"code": "invalid_header", "description": "Unable to find appropriate key"},
             401,
         )
+
+    return decorated
+
+
+def get_apikey_auth_header() -> str:
+    """Obtains the apiKey from Header"""
+    api_key = request.headers.get("apiKey", None)
+    if not api_key:
+        raise Error(
+            {
+                "code": "invalid_header",
+                "description": "apiKey not found.",
+            },
+            401,
+        )
+    return api_key
+
+
+def requires_api_key(func):
+    @wraps(func)
+    def decorated(*args, **kwargs):
+        api_key = get_apikey_auth_header()
+        if api_key != os.getenv("API_KEY"):
+            raise Error(
+                {
+                    "code": "invalid_header",
+                    "description": "apiKey mismatch.",
+                },
+                401,
+            )
+        return func(*args, **kwargs)
 
     return decorated
